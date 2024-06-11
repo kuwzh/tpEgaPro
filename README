@@ -1,0 +1,38 @@
+# Projet EgaPro
+
+## Objectifs du Projet
+Ce projet a pour but de développer une architecture de services pour distribuer les données de l'Index EgaPro.
+
+## Membres de l'Équipe
+- Dorian TARDIEU
+- Neil TUJAGUE
+- Yanis LAMBOURG
+
+## Diagramme de Séquence
+
+
+## Services Développés
+### Service RPC
+- Description : 
+- Documentation : 
+
+### Service REST
+- Description : 
+- Documentation Swagger : 
+
+### Service SOAP
+- Description : 
+- Documentation WSDL : [WSDL](path/to/wsdl)
+
+## Base de Données
+- Schéma de la Base de Données : 
+
+## Distribution des Données
+- Script de Référence : 
+
+## Configuration du Reverse Proxy
+- Configuration Nginx : 
+
+## Tests et Validation
+- Tests réalisés : 
+- Révision de code : 
