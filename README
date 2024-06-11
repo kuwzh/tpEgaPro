@@ -12,27 +12,28 @@ Ce projet a pour but de développer une architecture de services pour distribuer
 
 
 ## Services Développés
+
 ### Service RPC
-- Description : 
-- Documentation : 
 
-### Service REST
-- Description : 
-- Documentation Swagger : 
+**Description :**
+Ce service distribue les données EgaPro via RPC (Remote Procedure Call). Ce type de service permet aux clients d'appeler des méthodes sur un serveur distant comme s'il s'agissait de méthodes locales.
 
-### Service SOAP
-- Description : 
-- Documentation WSDL : [WSDL](path/to/wsdl)
+**Documentation :**
+- **Endpoint RPC** : `/rpc`
+- **Méthode** : `getEgaProData`
+- **Paramètres** :
+  - `siren` (string) : Le numéro SIREN de l'entreprise dont on souhaite obtenir les données.
+- **Réponse** : 
+  ```json
+  {
+    "siren": "123456789",
+    "data": {
+      "indexEgaPro": 85,
+      "details": {
+        "indicator1": 95,
+        "indicator2": 75,
+        ...
+      }
+    }
+  }
 
-## Base de Données
-- Schéma de la Base de Données : 
-
-## Distribution des Données
-- Script de Référence : 
-
-## Configuration du Reverse Proxy
-- Configuration Nginx : 
-
-## Tests et Validation
-- Tests réalisés : 
-- Révision de code : 
