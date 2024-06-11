@@ -9,7 +9,7 @@ Ce projet a pour but de développer une architecture de services pour distribuer
 - Yanis LAMBOURG
 
 ## Diagramme de Séquence
-
+![Diagramme de Séquence](https://www.plantuml.com/plantuml/png/bPFFYXGn4CRl_HHry-GBp45sKGS6TbLcmUjGfClPQ6qbvay_ZqVxEVh5h3QxT6L760mqIN-f-huV8Rd91LEfJpn4dRtp4QN0-uUlfxrd0iomz-xHKpgfrjNSniZUOV51EdtFc7-SxiDOcRgD3zwL8-58gPFfZ365quW51nZG5JzXeIxMHC7RTtPh1v_hb0WKzLjJL_RDnMIQBZKnEpiuY2yUsMS2dCWPjyt9Od884Rw4ci0zui-gyVui12DAVaq2EhhaLz5tlW0ZgBLQUNcsMjjCcVBQ_1qSbzdLkFnEj3PFoAGi3uVZnqz_Ev5B-mC9ejxBd4bAu-kEkmshNG3UVW-rh36D39PV5nR4cLhUrQp6TaTPoUf4pBeQWyWowo87ROnSCwYBKnVApstNCU-fh6WAcw0pZKqnf_E2V1q3nNaIKIrKMEOpydyG7SuI4dKmMxoCmykyVYFzwyOQrGHPsJuIk7WcvY5sTvpVu5RPoeORnQXF_0S0)
 
 ## Services Développés
 
@@ -18,22 +18,160 @@ Ce projet a pour but de développer une architecture de services pour distribuer
 **Description :**
 Ce service distribue les données EgaPro via RPC (Remote Procedure Call). Ce type de service permet aux clients d'appeler des méthodes sur un serveur distant comme s'il s'agissait de méthodes locales.
 
+**Code Source :**
+```python
+import rpyc
+from csv import DictReader
+
+egapro_data = {}
+
+with open("index-egalite-fh-utf8.csv") as csv:
+    reader = DictReader(csv, delimiter=";", quotechar='"')
+    for row in reader:
+        if egapro_data.get(row["SIREN"]) is None:
+            egapro_data[row["SIREN"]] = row
+        elif egapro_data[row["SIREN"]]["Année"] < row["Année"]:
+            egapro_data[row["SIREN"]].update(row)
+
+class EgaProService(rpyc.Service):
+    def on_connect(self, conn):
+        pass
+
+    def on_disconnect(self, conn):
+        pass
+
+    def exposed_get_data(self, siren):
+        """
+        Retourne les données EgaPro pour un numéro SIREN donné.
+        """
+        return egapro_data.get(str(siren), "SIREN not found")
+
+if __name__ == "__main__":
+    from rpyc.utils.server import ThreadedServer
+    t = ThreadedServer(EgaProService, port=18861)
+    t.start()
+
+### Service REST
+
+**Description :**
+Ce service distribue les données EgaPro via une API REST. Les données sont renvoyées en format JSON.
+
+**Code Source :**
+from csv import DictReader
+from flask import Flask, jsonify
+
+# Lire le fichier CSV et stocker les données dans un dictionnaire
+egapro_data = {}
+
+with open("index-egalite-fh-utf8.csv") as csv:
+    reader = DictReader(csv, delimiter=";", quotechar='"')
+    for row in reader:
+        if egapro_data.get(row["SIREN"]) is None:
+            egapro_data[row["SIREN"]] = row
+        elif egapro_data[row["SIREN"]]["Année"] < row["Année"]:
+            egapro_data[row["SIREN"]].update(row)
+
+application = Flask(__name__)
+
+@application.route("/siren/<siren>")
+def siren(siren: int):
+    """
+    Retourne les données EgaPro pour un numéro SIREN donné.
+    Une 404 est retournée si le SIREN n'est pas trouvé.
+
+    :param siren: Numéro SIREN en entier
+    :return: Les données correspondantes en JSON
+    """
+    response = egapro_data.get(siren)
+
+    if response is None:
+        response = {"error": "SIREN not found"}
+        status = 404
+    else:
+        status = 200
+    return jsonify(response), status
+
+if __name__ == "__main__":
+    application.run(debug=True)
+
 **Documentation :**
-- **Endpoint RPC** : `/rpc`
-- **Méthode** : `getEgaProData`
-- **Paramètres** :
-  - `siren` (string) : Le numéro SIREN de l'entreprise dont on souhaite obtenir les données.
-- **Réponse** : 
-  ```json
-  {
-    "siren": "123456789",
-    "data": {
-      "indexEgaPro": 85,
-      "details": {
-        "indicator1": 95,
-        "indicator2": 75,
-        ...
-      }
+
+**Endpoint REST :** /siren/<siren>
+**Méthode :** GET
+**Paramètres :**
+**siren (int) :** Le numéro SIREN de l'entreprise dont on souhaite obtenir les données.
+**Réponse:** {
+  "siren": "123456789",
+  "data": {
+    "indexEgaPro": 85,
+    "details": {
+      "indicator1": 95,
+      "indicator2": 75,
+      ...
     }
   }
+}
+**Service SOAP**
+**Description :**
+Ce service distribue les données EgaPro via une API SOAP. Les données sont renvoyées en format XML.
 
+WSDL :<definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://example.com/egapro" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" targetNamespace="http://example.com/egapro">
+    <types>
+        <xsd:schema targetNamespace="http://example.com/egapro">
+            <xsd:element name="getEgaProDataRequest">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="siren" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="getEgaProDataResponse">
+                <xsd:complexType>
+                    <xsd:sequence>
+                        <xsd:element name="data" type="xsd:string"/>
+                    </xsd:sequence>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:schema>
+    </types>
+    <message name="getEgaProDataRequest">
+        <part name="parameters" element="tns:getEgaProDataRequest"/>
+    </message>
+    <message name="getEgaProDataResponse">
+        <part name="parameters" element="tns:getEgaProDataResponse"/>
+    </message>
+    <portType name="EgaProPortType">
+        <operation name="getEgaProData">
+            <input message="tns:getEgaProDataRequest"/>
+            <output message="tns:getEgaProDataResponse"/>
+        </operation>
+    </portType>
+    <binding name="EgaProBinding" type="tns:EgaProPortType">
+        <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+        <operation name="getEgaProData">
+            <soap:operation soapAction="getEgaProData"/>
+            <input>
+                <soap:body use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+    </binding>
+    <service name="EgaProService">
+        <port name="EgaProPort" binding="tns:EgaProBinding">
+            <soap:address location="http://example.com/egapro"/>
+        </port>
+    </service>
+</definitions>
+**Documentation :**
+
+**Endpoint SOAP :** /soap
+**Méthode :** getEgaProData
+**Paramètres :**
+**siren (string) :** Le numéro SIREN de l'entreprise dont on souhaite obtenir les données.
+Réponse : <getEgaProDataResponse>
+    <data>
+        {"siren": "123456789", "indexEgaPro": 85, "details": {"indicator1": 95, "indicator2": 75, ...}}
+    </data>
+</getEgaProDataResponse>
