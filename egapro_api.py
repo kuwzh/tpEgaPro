@@ -23,3 +23,4 @@ def get_data_by_siren(siren):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
