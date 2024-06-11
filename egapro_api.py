@@ -1,48 +1,61 @@
-"""
-This module is a flask app that serves the EgaPro data, via a JSON API.
-It read the data from a CSV file, and serves it as a JSON object.
-"""
-
+from spyne import Application, rpc, ServiceBase, Unicode
+from spyne.protocol.soap import Soap11
+from spyne.server.wsgi import WsgiApplication
 from csv import DictReader
-
-from flask import Flask, jsonify
-
-# Read the index-egalite-fh.csv file and store it in a dictionary
+import requests
 
 egapro_data = {}
 
-with open("index-egalite-fh-utf8.csv") as csv:
-    reader = DictReader(csv, delimiter=";", quotechar='"')
+with open("index-egalite-fh-utf8.csv", encoding='utf-8') as csv_file:
+    reader = DictReader(csv_file, delimiter=";", quotechar='"')
     for row in reader:
         if egapro_data.get(row["SIREN"]) is None:
             egapro_data[row["SIREN"]] = row
         elif egapro_data[row["SIREN"]]["Année"] < row["Année"]:
             egapro_data[row["SIREN"]].update(row)
 
-application = Flask(__name__)
+class EgaProService(ServiceBase):
+    @rpc(Unicode, _returns=Unicode)
+    def getEgaProData(ctx, siren):
+        """
+        Returns the EgaPro data for a given SIREN number.
+        """
+        data = egapro_data.get(siren)
+        if data is None:
+            return "SIREN not found"
+        return str(data)
 
+# Create a Spyne application
+application = Application([EgaProService], 'spyne.examples.hello.soap',
+                          in_protocol=Soap11(validator='lxml'),
+                          out_protocol=Soap11())
 
-# Define the SIREN route taking a SIREN as a parameter and returning the
-# corresponding data from the egapro_data dictionary
-@application.route("/siren/<siren>")
-def siren(siren: int):
+# Create a WSGI application
+wsgi_application = WsgiApplication(application)
+
+if __name__ == '__main__':
+    # Start the WSGI server
+    from wsgiref.simple_server import make_server
+    server = make_server('0.0.0.0', 8000, wsgi_application)
+    print("Listening on port 8000...")
+    server.serve_forever()
+
+    # Example of sending a SOAP request
+    soap_request = """<?xml version="1.0" encoding="UTF-8"?>
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="spyne.examples.hello.soap">
+       <soap:Body>
+          <ns1:getEgaProData>
+             <siren>431796960</siren>
+          </ns1:getEgaProData>
+       </soap:Body>
+    </soap:Envelope>
     """
-    Return the EgaPro data for a given SIREN number.
-    A 404 is return if the SIREN is not found.
 
-       :param siren: SIREN number as integer
-       :return: The corresponding data as a JSON
-    """
-    response = egapro_data.get(siren)
+    # Define the URL of the SOAP service
+    url = "http://localhost:8000/"
 
-    if response is None:
-        response = {"error": "SIREN not found"}
-        status = 404
-    else:
-        status = 200
-    return jsonify(response), status
+    # Send the SOAP request
+    response = requests.post(url, data=soap_request, headers={"Content-Type": "text/xml"})
 
-
-# A debug flask launcher
-if __name__ == "__main__":
-    application.run(debug=True)
+    # Print the response content
+    print(response.content)
